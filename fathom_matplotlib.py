@@ -11,6 +11,10 @@ import pandas as pd
 import os
 import matplotlib.pyplot as plt
 import numpy as np
+import seaborn as sns
+sns.set_theme(style="darkgrid") 
+
+                  
 #%% importing data
 
 os.chdir(r"C:\Users\JM070903\PycharmProjects\Fathom_Matplotlib_Pipeline") #move to directory
@@ -57,7 +61,6 @@ class Curve:
         print("POR Head is: \n" + str(self.por_head))  
                
 
-
 #%%
 curve_dict = {}
 for i in range(0,len(xl)):
@@ -70,17 +73,43 @@ for sheet in sheet_names:
                                              aor_flow = xl[sheet]["AOR Flow"].dropna(), aor_head = xl[sheet]["AOR Head"].dropna(), \
                                                  por_flow = xl[sheet]["POR Flow"].dropna(), por_head = xl[sheet]["POR Head"].dropna())
     
-        
 #%%
-print(curve_dict["Sheet1"].pump_head)
+# print(curve_dict["Sheet1"].pump_head)
+print(curve_dict["Sheet2"].speed)
+
 
 #%%
-fig,ax = plt.subplots()
+graph_title = "Example System Curve"
+letter_portrait = (6.7,3.5)
+letter_landscape = (5,9)
+tabloid_portrait = (9,4.75)
+tabloid_landscape = (15,7.4)
+
+
+fig,ax = plt.subplots(figsize = letter_portrait)
+system_curve = sns.lineplot(x = curve_dict["Sheet1"].system_curve_flow,y = curve_dict["Sheet1"].system_curve_head, ax = ax, \
+                            label = "System Curve", linestyle = "dashed") #This assumes 100% speed is on sheet1, if not the system curve may not intersect your highest pump speed
+
 for sheet in sheet_names:
-    plt.plot(curve_dict[sheet].system_curve_flow, curve_dict[sheet].system_curve_head)
-    plt.plot(curve_dict[sheet].pump_flow, curve_dict[sheet].pump_head)
 
+    pump_curve = sns.lineplot(x = curve_dict[sheet].pump_flow,y = curve_dict[sheet].pump_head, ax = ax, \
+                              label = f"{curve_dict[sheet].speed} % Speed Pump Curve")
+    aor_plot = sns.scatterplot(x=curve_dict[sheet].aor_flow, y = curve_dict[sheet].aor_head, color = "k", ax = ax, \
+                               label = "AOR" if sheet == "Sheet1" else "", zorder = 3)
+    por_plot = sns.scatterplot(x=curve_dict[sheet].por_flow, y = curve_dict[sheet].por_head, color = "r", ax = ax, \
+                               label = "POR" if sheet =="Sheet1" else "", zorder = 3)
+sns.set_palette("deep")
+ax.set_xlabel("Flow (L/s)")
+ax.set_ylabel("Head (m)")
+ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.45), ncol = 2) #This is set for letter_portrait figsize, might need adjusting for others
+ax.set_title(graph_title)
+plt.show()
 
+#ax1 = plt.twinx()
+#sns.lineplot( x = curve_dict["Sheet1"].system_curve_flow, y = curve_dict["Sheet1"].efficiancy, ax = ax1)
+
+fig.savefig("System and Pump Curves.jpg", dpi = 1200, bbox_inches='tight') 
+print("System and Pump Curves.jpg' saved in current directory")
 
 
 
