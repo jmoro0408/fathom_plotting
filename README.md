@@ -12,9 +12,9 @@ Only Flows in L/s and lengths in metres are supported. Please convert to these p
 
 Headers are as follows:
 
-Speed (%)	 Pump Flow	Pump Head 	System Curve Flow	 System Curve Head 	Efficiancy Flow		 Efficiancy Percent
-AOR Flow	AOR Head	POR Flow 	POR Head 		Inlet Resevoir Level	NPSH Elevation Reference 
-Suction Pipe Diameter		Pipe Friction Factor			Suction Pipe Length	NPSHR Flow		NPSHR Head
+Speed (%)	| Pump Flow	| Pump Head |	System Curve Flow	| System Curve Head |	Efficiancy Flow	| Efficiancy Percent |
+AOR Flow |	AOR Head | POR Flow |	POR Head |	Inlet Resevoir Level |	NPSH Elevation Reference |
+Suction Pipe Diameter	|	Pipe Friction Factor	|	Suction Pipe Length | NPSHR Flow	|	NPSHR Head
 
 
 Speed (%) - Percent  - Speed for chosen curve details. 
