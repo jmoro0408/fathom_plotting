@@ -1,5 +1,6 @@
 # fathom_plotting
-Program that takes outputs from fathom and plots them in a pretty seaborn graph. 
+Program that takes outputs from fathom and plots them in a pretty seaborn graph.
+
 This program assumes the inputs EXACTLY as thy are listed in the headers of 
 Fathom Output.xlsx. 
 If some values are not known, just leave the column blank. E.G you may not know/want
