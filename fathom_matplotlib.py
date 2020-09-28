@@ -3,6 +3,8 @@
 Created on Fri Sep 25 19:45:46 2020
 
 @author: JM070903
+#TODO Write docstring eugh
+
 """
 
 #%% Imports
@@ -12,6 +14,7 @@ import os
 import matplotlib.pyplot as plt
 import numpy as np
 import seaborn as sns
+import math
 sns.set_theme(style="darkgrid") 
 
                   
@@ -22,12 +25,12 @@ xl = pd.read_excel(r"Fathom/Fathom_Output.xlsx", sheet_name = None) #import exce
 sheet_names = xl.keys()
 sheet_names = list(sheet_names)
 
-
 #%% Create pump curve class
 
 class Curve:
     def __init__(self, speed = None, pump_flow = None, pump_head = None, system_curve_flow = None, system_curve_head = None, efficiancy = None, \
-                 aor_flow = None, aor_head = None, por_flow = None, por_head = None):
+                 aor_flow = None, aor_head = None, por_flow = None, por_head = None, npsha_head = None, \
+                     npshr_flow = None, npshr_head = None, intersection_head = None, intersection_flow  = None):
         self.speed = speed
         self.pump_flow = pump_flow
         self.pump_head = pump_head
@@ -38,6 +41,11 @@ class Curve:
         self.aor_head = aor_head
         self.por_flow = por_flow
         self.por_head = por_head
+        self.npsha_head = npsha_head
+        self.npshr_flow = npshr_flow
+        self.npshr_head = npshr_head
+        self.intersection_flow = intersection_flow
+        self.intersection_head = intersection_head
         
     def curve_speed(self):
         print("Speed is: \n" + str(self.speed))
@@ -59,24 +67,65 @@ class Curve:
         print("POR Flow is: \n" + str(self.por_flow))  
     def curve_por_head(self):
         print("POR Head is: \n" + str(self.por_head))  
+    def curve_npsha_head(self):
+        print("NPSHA Head is: \n" + str(self.npsha_head))
+    def curve_npshr_flow(self):
+        print("NPSHR Flow is: \n" + str(self.npshr_flow))
+    def curve_npshr_head(self):
+        print("NPSHR Head is: \n" + str(self.npshr_head))    
+    def curve_intersection(self):
+        print(f"Intersection point is: Flow: {self.intersection_flow}, Head: {self.intersection_head}")
                
+#%% NPSHA Caclulation 
+p_atm = 10.3 #default (metres) - assuming sea level
+p_vap = 0.125 #assuming water at 10C. Lookup other values in steam table if reqd
+pipe_area = ((math.pi * (xl["Sheet1"]["Suction Pipe Diameter"][0]**2)))/4
+suction_head_static = xl["Sheet1"]["Inlet Resevoir Level"][0] - xl["Sheet1"]["NPSH Elevation Reference"][0]
+suction_velocity = (0.001*xl["Sheet1"]["Pump Flow"]) / pipe_area
 
-#%%
-curve_dict = {}
-for i in range(0,len(xl)):
-    curve_dict["Sheet%s" %i] = {}
+suction_losses = (xl["Sheet1"]["Pipe Friction Factor"][0] *xl["Sheet1"]["Suction Pipe Length"][0] / xl["Sheet1"]["Suction Pipe Diameter"][0]) \
+                  *((suction_velocity**2)/(2*9.81)) #uses the pipe friction factor to calculate friction losses in suction pipe
 
 for sheet in sheet_names:
+    xl[sheet]["NPSHA"] = p_atm +suction_head_static -suction_losses - p_vap #NPSHA calc.Same for every sheet, does not update with different pump speeds. \
+        #See https://www.youtube.com/watch?v=VlHgxwZBe1A for calc example. Does not account for mionor velocity losses
+
+
+
+
+#%% getting intersections
+for sheet in sheet_names:
+    xl[sheet]["Pump_System Head Diff"] = (xl[sheet]["Pump Head"] - xl[sheet]["System Curve Head"]).abs()
+    #create a new column in each sheet with the difference between pump and system head
+    head_diff_min = xl[sheet]["Pump_System Head Diff"].min()
+    head_diff_min_index = np.where((xl[sheet]["Pump_System Head Diff"] == head_diff_min) ==True)[0].astype(int)
+    xl[sheet]["intersection_flow"] = xl[sheet]["Pump Flow"][head_diff_min_index]
+    xl[sheet]["intersection_head"] = xl[sheet]["Pump Head"][head_diff_min_index]
+
+#%%
+curve_dict = {} #create empty dict to hold sheet info
+for i in range(0,len(xl)):
+    curve_dict["Sheet%s" %i] = {}  #create a new dict key for each sheet, Sheet1, sheet2, sheet3 etc
+
+for sheet in sheet_names: #create classes for each sheet and store them in the ditionary previously created
     curve_dict[sheet] = Curve(speed = xl[sheet]["Speed (%)"][0], pump_flow = xl[sheet]["Pump Flow"], \
                                      pump_head = xl[sheet]["Pump Head"], system_curve_flow = xl[sheet]["System Curve Flow"], \
                                          system_curve_head = xl[sheet]["System Curve Head"], efficiancy= xl[sheet]["Efficiancy Percent"], \
                                              aor_flow = xl[sheet]["AOR Flow"].dropna(), aor_head = xl[sheet]["AOR Head"].dropna(), \
-                                                 por_flow = xl[sheet]["POR Flow"].dropna(), por_head = xl[sheet]["POR Head"].dropna())
-    
-#%%
-# print(curve_dict["Sheet1"].pump_head)
-print(curve_dict["Sheet2"].speed)
-
+                                                 por_flow = xl[sheet]["POR Flow"].dropna(), por_head = xl[sheet]["POR Head"].dropna(), \
+                                                     npsha_head = xl[sheet]["NPSHA"],npshr_flow = xl[sheet]["NPSHR Flow"],\
+                                                         npshr_head = xl[sheet]["NPSHR Head"], \
+                                                             intersection_flow = xl[sheet]["intersection_flow"].dropna(), \
+                                                                intersection_head = xl[sheet]["intersection_head"].dropna())
+                                                                                    
+ #%%
+ 
+ """ 
+To access the Curve functions you have to call the functions from within the curve dictionary e.g:                                                          
+curve_dict["Sheet1"].curve_intersection()   
+curve_dict["Sheet1"].curve_intersection()     
+curve_dict["Sheet1"].curve_npshr_head()                                             
+""" 
 
 #%%
 graph_title = "Example System Curve"
@@ -84,25 +133,45 @@ letter_portrait = (6.7,3.5)
 letter_landscape = (5,9)
 tabloid_portrait = (9,4.75)
 tabloid_landscape = (15,7.4)
+seaborn_background_color = [0.234, 0.234, 0.242]
+
+x_axis_limit = xl["Sheet1"]["Pump Flow"].max()
 
 
 fig,ax = plt.subplots(figsize = letter_portrait)
 system_curve = sns.lineplot(x = curve_dict["Sheet1"].system_curve_flow,y = curve_dict["Sheet1"].system_curve_head, ax = ax, \
                             label = "System Curve", linestyle = "dashed") #This assumes 100% speed is on sheet1, if not the system curve may not intersect your highest pump speed
-
+npshr_curve = sns.lineplot(x = curve_dict["Sheet1"].npshr_flow,y = curve_dict["Sheet1"].npshr_head, ax = ax, \
+                           label = "NPSHr", linestyle = "dashdot")
+npsha_curve = sns.lineplot(x = curve_dict["Sheet1"].pump_flow, y = curve_dict["Sheet1"].npsha_head, ax = ax, \
+                           label = "NPSHa", linestyle = "dashdot")
+      
+    
 for sheet in sheet_names:
-
     pump_curve = sns.lineplot(x = curve_dict[sheet].pump_flow,y = curve_dict[sheet].pump_head, ax = ax, \
-                              label = f"{curve_dict[sheet].speed} % Speed Pump Curve")
+                              label = f"{curve_dict[sheet].speed} % Speed")
     aor_plot = sns.scatterplot(x=curve_dict[sheet].aor_flow, y = curve_dict[sheet].aor_head, color = "k", ax = ax, \
                                label = "AOR" if sheet == "Sheet1" else "", zorder = 3)
-    por_plot = sns.scatterplot(x=curve_dict[sheet].por_flow, y = curve_dict[sheet].por_head, color = "r", ax = ax, \
-                               label = "POR" if sheet =="Sheet1" else "", zorder = 3)
+    por_plot = sns.scatterplot(x=curve_dict[sheet].por_flow, y = curve_dict[sheet].por_head, color = "g", ax = ax, \
+                               label = "POR" if sheet =="Sheet1" else "", zorder = 3)  
+    intersection_plot = sns.scatterplot(x = curve_dict[sheet].intersection_flow, y = curve_dict[sheet].intersection_head, ax = ax, \
+                                        zorder = 3, color = "r", label = "Intersection Points" if sheet =="Sheet1" else "", \
+                                             s = 100, marker = "^")
+    intersection_callouts = ax.text\
+        (x = (x_axis_limit - x_axis_limit*0.12), \
+         y = (curve_dict[sheet].pump_head.max() - curve_dict[sheet].pump_head.max()/10),\
+            s = f'({xl[sheet]["intersection_flow"].max().round(1)} , {xl[sheet]["intersection_head"].max().round(1)})')
+             
+duty_point_text = ax.text(x = (x_axis_limit - x_axis_limit*0.12), \
+                          y = (curve_dict["Sheet1"].pump_head.max() - curve_dict[sheet].pump_head.max()/50), \
+                          s = "Duty Points:")
+        
 sns.set_palette("deep")
 ax.set_xlabel("Flow (L/s)")
 ax.set_ylabel("Head (m)")
-ax.legend(loc='lower center', bbox_to_anchor=(0.5, -0.45), ncol = 2) #This is set for letter_portrait figsize, might need adjusting for others
+ax.legend(loc='lower center' , bbox_to_anchor=(0.5, -0.5), ncol = 3) #This is set for letter_portrait figsize, might need adjusting for others
 ax.set_title(graph_title)
+ax.set_xlim(left = 0, right = (x_axis_limit + x_axis_limit*0.1)) #extending the x acis to 10% more than the max flow as a buffer
 plt.show()
 
 #ax1 = plt.twinx()
@@ -113,7 +182,41 @@ print("System and Pump Curves.jpg' saved in current directory")
 
 
 
+
+
 #%% Graveyard of stuff that didnt work. RIP.
+
+# Finding intersections - single intersection prior to looping
+
+# xl["Sheet1"]["Pump_System Head Diff"] = (xl["Sheet1"]["Pump Head"] - xl["Sheet1"]["System Curve Head"]).abs()
+# head_diff_min = xl["Sheet1"]["Pump_System Head Diff"].min()
+
+# head_diff_min_index = np.where((xl["Sheet1"]["Pump_System Head Diff"] == head_diff_min) ==True)[0].astype(int)
+
+# intersection1_flow = xl["Sheet1"]["Pump Flow"][head_diff_min_index]
+# intersection1_head = xl["Sheet1"]["Pump Head"][head_diff_min_index]
+
+# print(intersection1_flow)
+
+# sns.scatterplot(x = intersection1_flow, y = intersection1_head)
+
+# intersections = {}
+# head_diff_min = {}
+# head_diff_min_index = {}
+# sheet_range = list(range(0,len(xl)))
+# for i in sheet_range:
+#     intersections["Intersection%s" %i] = {}
+
+# for sheet in sheet_names:
+#     xl[sheet]["Pump_System Head Diff"] = (xl[sheet]["Pump Head"] - xl[sheet]["System Curve Head"]).abs()
+#     head_diff_min[sheet] = xl[sheet]["Pump_System Head Diff"].min()
+#     head_diff_min_index[sheet] = np.where((xl[sheet]["Pump_System Head Diff"] == head_diff_min) ==True)[0].astype(int)
+#     intersection_flow[sheet] = xl[sheet]["Pump Flow"][head_diff_min_index]
+    
+#     print(inter_section_flow[sheet])
+# #%%
+# print(curve_dict["Sheet1"].pump_head)
+# print(curve_dict["Sheet2"].speed)
 
 
 # print(xl["Sheet1"]["Speed (%)"][0])
@@ -209,21 +312,4 @@ print("System and Pump Curves.jpg' saved in current directory")
 
 # for i in range(0,len(sheets)):
     
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
+  
