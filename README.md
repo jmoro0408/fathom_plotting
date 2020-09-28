@@ -14,6 +14,7 @@ DO NOT change the sheet names."Sheet1", "Sheet2" etc strings are used for loopin
 NPSHa is calulated for 100% flow only. Minor velocity losses are not accounted for. 
 
 Efficiancy is not currently graphed as it gets very messy. 
+
 Only Flows in L/s and lengths in metres are supported. Please convert to these prior to using the program. 
 
 Headers are as follows:
