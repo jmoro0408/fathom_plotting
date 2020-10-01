@@ -1,5 +1,5 @@
 # fathom_plotting
-Program that takes outputs from fathom and plots them in a pretty seaborn graph.
+Program that takes outputs from AFT Fathom and plots them in a pretty seaborn graph.
 
 This program assumes the inputs EXACTLY as thy are listed in the headers of 
 Fathom Output.xlsx. 
